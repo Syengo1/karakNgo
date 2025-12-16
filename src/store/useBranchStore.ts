@@ -2,9 +2,9 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { supabase } from '@/lib/supabase';
 
-// 1. Define the Branch Type (Matching DB)
+// 1. Define the Branch Type (Matches DB exactly)
 export interface Branch {
-  id: string;
+  id: string; // Dynamic ID from DB
   name: string;
   is_open: boolean;
 }
@@ -18,9 +18,8 @@ interface BranchState {
 
   // Actions
   setBranch: (branch: Branch) => void;
-  setBranchById: (branchId: string) => Promise<void>;
+  setBranchById: (branchId: string) => Promise<boolean>;
   fetchBranches: () => Promise<void>;
-  refreshCurrentBranch: () => Promise<void>; // Critical for checking "is_open" in real-time
   toggleBranchSelector: (isOpen: boolean) => void;
 }
 
@@ -32,7 +31,7 @@ export const useBranchStore = create<BranchState>()(
       isBranchSelectorOpen: false,
       isLoading: false,
 
-      // Set the branch directly (optimistic)
+      // Set the branch directly (Used by BranchSelector)
       setBranch: (branch) => {
         set({ 
           currentBranch: branch,
@@ -40,7 +39,7 @@ export const useBranchStore = create<BranchState>()(
         });
       },
 
-      // Set branch by ID (useful for Admin login auto-setting)
+      // Set branch by ID (Used by Admin Login)
       setBranchById: async (branchId) => {
         try {
           const { data, error } = await supabase
@@ -51,13 +50,17 @@ export const useBranchStore = create<BranchState>()(
 
           if (data && !error) {
             set({ currentBranch: data });
+            return true;
           }
+          console.error(`Branch '${branchId}' not found in database.`);
+          return false;
         } catch (err) {
           console.error("Failed to set branch by ID:", err);
+          return false;
         }
       },
 
-      // Load all branches for the Selector UI
+      // Load all branches from DB (Used by BranchSelector)
       fetchBranches: async () => {
         set({ isLoading: true });
         try {
@@ -76,37 +79,22 @@ export const useBranchStore = create<BranchState>()(
         }
       },
 
-      // Re-fetch the *current* branch to check if it's still open
-      // Call this when the user attempts to Checkout
-      refreshCurrentBranch: async () => {
-        const current = get().currentBranch;
-        if (!current) return;
-
-        try {
-          const { data } = await supabase
-            .from('branches')
-            .select('*')
-            .eq('id', current.id)
-            .single();
-          
-          if (data) {
-            // Only update if status changed to avoid re-renders
-            if (data.is_open !== current.is_open) {
-               set({ currentBranch: data });
-            }
-          }
-        } catch (err) {
-          console.error("Failed to refresh branch status");
-        }
-      },
-
       toggleBranchSelector: (isOpen) => set({ isBranchSelectorOpen: isOpen }),
     }),
     {
-      name: 'karak-branch-storage',
+      name: 'crack-branch-storage',
       storage: createJSONStorage(() => localStorage),
-      // Only persist the current branch selection, not the full list or loading state
+      // Only persist the user's choice
       partialize: (state) => ({ currentBranch: state.currentBranch }),
+      // Versioning to force clear old cache
+      version: 2, 
+      migrate: (persistedState: any, version) => {
+        if (version < 2) {
+          // Wipe old state if version is old
+          return { currentBranch: null, branches: [], isBranchSelectorOpen: true, isLoading: false };
+        }
+        return persistedState;
+      },
     }
   )
 );

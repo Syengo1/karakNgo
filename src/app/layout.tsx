@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Playfair_Display, DM_Sans } from "next/font/google";
+import { Playfair_Display, DM_Sans, Permanent_Marker } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/shared/Navbar";
 import BranchSelector from "@/components/shared/BranchSelector";
@@ -18,8 +18,15 @@ const dmSans = DM_Sans({
   display: "swap",
 });
 
+const permanentMarker = Permanent_Marker({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-marker", // We will use this variable
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "Karak & Go | Sip. Snap. Go.",
+  title: "Crack & Go | Sip. Snap. Go.",
   description: "The premium beverage experience in Nairobi.",
 };
 
@@ -31,7 +38,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       {/* 2. Apply fonts and the 'Oatmeal' background color globally */}
-      <body className={`${playfair.variable} ${dmSans.variable} bg-karak-cream text-karak-black antialiased overflow-x-hidden selection:bg-karak-orange selection:text-white`}>
+      <body className={`${playfair.variable} ${dmSans.variable} ${permanentMarker.variable} bg-crack-cream text-crack-black antialiased overflow-x-hidden selection:bg-crack-orange selection:text-white`}>
         
         <Navbar />
         <BranchSelector />

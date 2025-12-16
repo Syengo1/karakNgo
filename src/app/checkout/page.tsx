@@ -18,7 +18,7 @@ type PaymentMethod = 'mpesa' | 'terminal';
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, getCartTotal } = useCartStore();
+  const { items, getCartTotal, clearCart } = useCartStore(); // Added clearCart for logic
   const { currentBranch } = useBranchStore();
   const [mounted, setMounted] = useState(false);
 
@@ -41,8 +41,6 @@ export default function CheckoutPage() {
   // --- SAFE REDIRECT LOGIC ---
   useEffect(() => {
     setMounted(true);
-    // Only redirect if cart is empty AND we are NOT showing success screen
-    // This prevents the success screen from disappearing when we clear the cart
     if (!success && items.length === 0) {
       router.push('/menu');
     }
@@ -50,7 +48,6 @@ export default function CheckoutPage() {
 
   if (!mounted) return null;
 
-  // --- CALCULATIONS ---
   const total = getCartTotal();
   const deliveryFee = orderType === 'delivery' ? 250 : 0;
   const finalTotal = total + deliveryFee;
@@ -61,19 +58,15 @@ export default function CheckoutPage() {
     e.preventDefault();
     setError("");
     
-    // 1. Branch Check
+    // 1. Basic Validation
     if (!currentBranch) {
        setError("Please go back and select a branch.");
        return;
     }
-
-    // 2. Delivery Validation
     if (orderType === 'delivery' && !deliveryLocation.trim()) {
        setError("Please enter a delivery location.");
        return;
     }
-
-    // 3. Phone Validation
     const formattedPhone = formatPhoneNumberForMpesa(phone);
     if (!formattedPhone) {
       setError("Please enter a valid Safaricom number (e.g. 0712...)");
@@ -83,61 +76,86 @@ export default function CheckoutPage() {
     setIsLoading(true);
 
     try {
-        // --- 4. FOOLPROOF: LIVE STOCK CHECK ---
-        // Before we take money, let's make sure the items still exist in the DB.
+        // --- 2. SECURITY CHECK: IS BRANCH OPEN? ---
+        const { data: branchData, error: branchError } = await supabase
+            .from('branches')
+            .select('is_open, name')
+            .eq('id', currentBranch.id)
+            .single();
+
+        if (branchError || !branchData) throw new Error("Could not verify store status.");
+        
+        if (!branchData.is_open) {
+            setIsLoading(false);
+            setError(`Sorry! ${branchData.name} is currently CLOSED.`);
+            return;
+        }
+
+        // --- 3. INVENTORY & OFFER CHECK ---
         const productIds = items.map(i => i.id);
-        const { data: stockCheck, error: stockError } = await supabase
+        const { data: productsCheck, error: stockError } = await supabase
             .from('products')
-            .select('id, name, is_available')
+            .select('id, name, is_available, is_bogo') // Check BOGO status too
             .in('id', productIds);
 
         if (stockError) throw new Error("Could not verify stock availability.");
 
-        // Find any item in the cart that is now unavailable in the DB
-        const soldOutItem = stockCheck?.find(p => !p.is_available);
-        
+        // Check 3a: Availability
+        const soldOutItem = productsCheck?.find(p => !p.is_available);
         if (soldOutItem) {
             setIsLoading(false);
-            setError(`Sorry, "${soldOutItem.name}" just sold out! Please remove it to proceed.`);
-            return; // Stop everything
+            setError(`Item "${soldOutItem.name}" is now Sold Out. Please remove it.`);
+            return;
         }
 
-        // --- 5. SMART: PREPARE KITCHEN DATA (BOGO LOGIC) ---
-        // We enrich the items list so the kitchen knows exactly what to do
-        const kitchenItems = items.map(item => ({
-            ...item,
-            // If BOGO is active, we append a loud instruction for the chef
-            kitchen_note: item.is_bogo ? "⚡ BOGO APPLIED: MAKE 2 ⚡" : "",
-            // We can also explicitly tell them the total units to prep
-            prep_quantity: item.is_bogo ? item.quantity * 2 : item.quantity
-        }));
+        // Check 3b: Offer Validity (Optional but smart)
+        // If an item in cart says BOGO, but DB says NO BOGO, warn user?
+        // For now, we will just proceed but update the kitchen note to match reality if needed.
 
-        // 6. GENERATE ORDER ID
+        // --- 4. SMART KITCHEN DATA ---
+        const kitchenItems = items.map(item => {
+            // Double check against real DB data for the note
+            const realProduct = productsCheck?.find(p => p.id === item.id);
+            const isReallyBogo = realProduct?.is_bogo ?? item.is_bogo;
+
+            return {
+                ...item,
+                // The Chef Instructions
+                kitchen_note: isReallyBogo ? "⚡ BOGO APPLIED: MAKE 2 ⚡" : "",
+                prep_quantity: isReallyBogo ? item.quantity * 2 : item.quantity,
+                // Snapshot values for history
+                price_at_purchase: item.sale_price || item.base_price 
+            };
+        });
+
+        // 5. GENERATE ORDER ID
         const newOrderId = `KG-${Math.floor(1000 + Math.random() * 9000)}`;
         
-        // 7. PREPARE DB PAYLOAD
+        // 6. DB PAYLOAD
         const orderPayload = {
             id: newOrderId,
+            created_at: new Date().toISOString(),
             customer_name: name,
             customer_phone: formattedPhone,
             branch_id: currentBranch.id,
             order_type: orderType,
             payment_method: paymentMethod,
             total_amount: finalTotal,
-            items: kitchenItems, // <--- SAVING THE SMART ITEMS
+            items: kitchenItems, 
             delivery_location: orderType === 'delivery' ? deliveryLocation : null,
             order_status: 'new',
-            payment_status: 'pending' // Initially pending
+            payment_status: 'pending' 
         };
 
-        // 8. SAVE TO SUPABASE (Save First Pattern)
+        // 7. INSERT ORDER
         const { error: dbError } = await supabase
             .from('orders')
             .insert([orderPayload]);
 
         if (dbError) {
-            console.error("DB Error:", dbError);
-            throw new Error("Failed to create order record. Please try again.");
+            // Improved Logging for Debugging
+            console.error("FULL DB ERROR:", JSON.stringify(dbError, null, 2));
+            throw new Error(dbError.message || "Failed to create order. Try again.");
         }
 
         // --- PATH A: PAY AT COUNTER ---
@@ -146,7 +164,7 @@ export default function CheckoutPage() {
                 setIsLoading(false);
                 setSuccess(true);
                 setOrderRef(newOrderId);
-            }, 1000);
+            }, 1500);
             return;
         }
 
@@ -167,15 +185,11 @@ export default function CheckoutPage() {
             throw new Error(data.error || "M-Pesa request failed.");
         }
 
-        // Success! Now we wait for PIN
         setIsLoading(false);
         setIsPolling(true);
         
-        // POLL SIMULATION
-        // In a real production app, you would rely on the M-Pesa Callback Webhook to update the DB.
-        // For now, we wait 5s and assume success to simulate the experience.
+        // POLL SIMULATION (Replace with real polling/webhook in future)
         setTimeout(async () => {
-            // Optimistically update DB status to 'paid'
             await supabase
                 .from('orders')
                 .update({ payment_status: 'paid' })
@@ -198,19 +212,19 @@ export default function CheckoutPage() {
   }
 
   return (
-    <main className="min-h-screen bg-white md:bg-karak-cream flex items-center justify-center p-0 md:p-6">
+    <main className="min-h-screen bg-white md:bg-crack-cream flex items-center justify-center p-0 md:p-6">
       
       <div className="w-full max-w-6xl bg-white md:rounded-3xl shadow-none md:shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-screen md:min-h-[800px]">
         
         {/* --- LEFT: INPUT FORM --- */}
         <div className="w-full md:w-3/5 p-6 md:p-12 order-2 md:order-1 flex flex-col">
           <div className="mb-6">
-            <Link href="/menu" className="inline-flex items-center text-sm text-karak-black/50 hover:text-karak-orange transition-colors mb-4">
+            <Link href="/menu" className="inline-flex items-center text-sm text-crack-black/50 hover:text-crack-orange transition-colors mb-4">
               <ArrowLeft className="w-4 h-4 mr-1" /> Back to Menu
             </Link>
-            <h1 className="font-serif text-3xl text-karak-black">Checkout</h1>
-            <p className="text-karak-black/60 text-sm mt-1">
-              Ordering from <span className="font-bold text-karak-orange">{currentBranch?.name || "Select Branch"}</span>
+            <h1 className="font-serif text-3xl text-crack-black">Checkout</h1>
+            <p className="text-crack-black/60 text-sm mt-1">
+              Ordering from <span className="font-bold text-crack-orange">{currentBranch?.name || "Select Branch"}</span>
             </p>
           </div>
 
@@ -218,15 +232,15 @@ export default function CheckoutPage() {
             
             {/* 1. Delivery vs Pickup */}
             <section>
-              <label className="text-xs font-bold uppercase text-karak-black/40 tracking-wider mb-2 block">Method</label>
-              <div className="bg-karak-cream/50 p-1 rounded-xl flex">
+              <label className="text-xs font-bold uppercase text-crack-black/40 tracking-wider mb-2 block">Method</label>
+              <div className="bg-crack-cream/50 p-1 rounded-xl flex">
                 {(['pickup', 'delivery'] as const).map((type) => (
                   <button
                     key={type}
                     type="button"
                     onClick={() => setOrderType(type)}
                     className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-medium transition-all ${
-                      orderType === type ? 'bg-white shadow-sm text-karak-black' : 'text-karak-black/50 hover:bg-white/50'
+                      orderType === type ? 'bg-white shadow-sm text-crack-black' : 'text-crack-black/50 hover:bg-white/50'
                     }`}
                   >
                     {type === 'pickup' ? <Clock className="w-4 h-4" /> : <Truck className="w-4 h-4" />}
@@ -238,7 +252,7 @@ export default function CheckoutPage() {
 
             {/* 2. Customer Info */}
             <section className="space-y-4">
-              <label className="text-xs font-bold uppercase text-karak-black/40 tracking-wider block">Details</label>
+              <label className="text-xs font-bold uppercase text-crack-black/40 tracking-wider block">Details</label>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input 
@@ -247,18 +261,18 @@ export default function CheckoutPage() {
                   placeholder="Your Name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full border-b border-karak-black/20 py-2 focus:border-karak-orange focus:outline-none bg-transparent"
+                  className="w-full border-b border-crack-black/20 py-2 focus:border-crack-orange focus:outline-none bg-transparent"
                 />
                 
                 <div className="relative">
-                  <Smartphone className="absolute left-0 top-2.5 w-4 h-4 text-karak-black/30" />
+                  <Smartphone className="absolute left-0 top-2.5 w-4 h-4 text-crack-black/30" />
                   <input 
                     required
                     type="tel"
                     placeholder="M-Pesa Number (07...)"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full pl-6 border-b border-karak-black/20 py-2 focus:border-karak-orange focus:outline-none bg-transparent font-mono"
+                    className="w-full pl-6 border-b border-crack-black/20 py-2 focus:border-crack-orange focus:outline-none bg-transparent font-mono"
                   />
                 </div>
               </div>
@@ -272,14 +286,14 @@ export default function CheckoutPage() {
                     exit={{ height: 0, opacity: 0 }}
                   >
                     <div className="relative pt-2">
-                      <MapPin className="absolute left-0 top-4.5 w-4 h-4 text-karak-black/30" />
+                      <MapPin className="absolute left-0 top-4.5 w-4 h-4 text-crack-black/30" />
                       <input 
                         required
                         type="text"
                         placeholder="Delivery Location / Apartment"
                         value={deliveryLocation}
                         onChange={(e) => setDeliveryLocation(e.target.value)}
-                        className="w-full pl-6 border-b border-karak-black/20 py-2 focus:border-karak-orange focus:outline-none bg-transparent"
+                        className="w-full pl-6 border-b border-crack-black/20 py-2 focus:border-crack-orange focus:outline-none bg-transparent"
                       />
                     </div>
                   </motion.div>
@@ -289,7 +303,7 @@ export default function CheckoutPage() {
 
             {/* 3. Payment Method Selector */}
             <section>
-              <label className="text-xs font-bold uppercase text-karak-black/40 tracking-wider mb-2 block">Payment</label>
+              <label className="text-xs font-bold uppercase text-crack-black/40 tracking-wider mb-2 block">Payment</label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
@@ -297,7 +311,7 @@ export default function CheckoutPage() {
                   className={`border rounded-xl p-4 flex flex-col items-center gap-2 transition-all ${
                     paymentMethod === 'mpesa' 
                     ? 'border-green-500 bg-green-50 text-green-700 ring-1 ring-green-500' 
-                    : 'border-karak-black/10 hover:border-karak-black/30 text-karak-black/60'
+                    : 'border-crack-black/10 hover:border-crack-black/30 text-crack-black/60'
                   }`}
                 >
                   <Smartphone className="w-6 h-6" />
@@ -309,8 +323,8 @@ export default function CheckoutPage() {
                   onClick={() => setPaymentMethod('terminal')}
                   className={`border rounded-xl p-4 flex flex-col items-center gap-2 transition-all ${
                     paymentMethod === 'terminal' 
-                    ? 'border-karak-black bg-karak-black/5 text-karak-black ring-1 ring-karak-black' 
-                    : 'border-karak-black/10 hover:border-karak-black/30 text-karak-black/60'
+                    ? 'border-crack-black bg-crack-black/5 text-crack-black ring-1 ring-crack-black' 
+                    : 'border-crack-black/10 hover:border-crack-black/30 text-crack-black/60'
                   }`}
                 >
                   <div className="flex gap-1">
@@ -327,7 +341,7 @@ export default function CheckoutPage() {
               rows={2}
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
-              className="w-full border border-karak-black/10 rounded-lg p-3 text-sm focus:border-karak-orange focus:outline-none bg-karak-cream/20 resize-none"
+              className="w-full border border-crack-black/10 rounded-lg p-3 text-sm focus:border-crack-orange focus:outline-none bg-crack-cream/20 resize-none"
               placeholder="Notes for Barista (e.g. Extra hot)"
             />
 
@@ -352,7 +366,7 @@ export default function CheckoutPage() {
                 className={`w-full py-4 rounded-full font-medium text-lg transition-all shadow-lg flex items-center justify-center gap-3 relative overflow-hidden group ${
                   paymentMethod === 'mpesa' 
                     ? 'bg-green-600 hover:bg-green-700 text-white' 
-                    : 'bg-karak-black hover:bg-karak-black/90 text-white'
+                    : 'bg-crack-black hover:bg-crack-black/90 text-white'
                 } disabled:opacity-70 disabled:cursor-not-allowed`}
               >
                 {isLoading ? (
@@ -380,21 +394,21 @@ export default function CheckoutPage() {
         </div>
 
         {/* --- RIGHT: SUMMARY --- */}
-        <div className="w-full md:w-2/5 bg-karak-cream/50 md:bg-karak-black/5 p-6 md:p-12 order-1 md:order-2 border-b md:border-b-0 md:border-l border-karak-black/5">
-          <h2 className="font-serif text-xl text-karak-black mb-6">Order Summary</h2>
+        <div className="w-full md:w-2/5 bg-crack-cream/50 md:bg-crack-black/5 p-6 md:p-12 order-1 md:order-2 border-b md:border-b-0 md:border-l border-crack-black/5">
+          <h2 className="font-serif text-xl text-crack-black mb-6">Order Summary</h2>
           <div className="space-y-4 max-h-[300px] md:max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
             {items.map((item) => (
               <div key={item.cartId} className="flex gap-4 items-start">
-                <div className={`w-16 h-16 rounded-lg shrink-0 flex items-center justify-center text-xs font-serif ${item.category.includes('Matcha') ? 'bg-karak-sage/20' : 'bg-karak-orange/20'}`}>
+                <div className={`w-16 h-16 rounded-lg shrink-0 flex items-center justify-center text-xs font-serif ${item.category.includes('Matcha') ? 'bg-crack-sage/20' : 'bg-crack-orange/20'}`}>
                   K&G
                 </div>
                 <div className="flex-1">
                    <div className="flex justify-between">
-                     <p className="font-serif text-karak-black">{item.name}</p>
+                     <p className="font-serif text-crack-black">{item.name}</p>
                      <p className="font-mono text-sm">KES {item.totalPrice}</p>
                    </div>
                    
-                   <p className="text-xs text-karak-black/50">{item.selectedSize} {item.stickerText && `• ${item.stickerText}`}</p>
+                   <p className="text-xs text-crack-black/50">{item.selectedSize} {item.stickerText && `• ${item.stickerText}`}</p>
                    
                    {/* BOGO INDICATOR IN SUMMARY */}
                    {item.is_bogo && (
@@ -404,7 +418,7 @@ export default function CheckoutPage() {
                    )}
 
                    {item.selectedModifiers.length > 0 && (
-                     <p className="text-[10px] text-karak-black/40 mt-1">
+                     <p className="text-[10px] text-crack-black/40 mt-1">
                        {item.selectedModifiers.map(m => m.name).join(', ')}
                      </p>
                    )}
@@ -413,12 +427,12 @@ export default function CheckoutPage() {
             ))}
           </div>
           
-          <div className="border-t border-dashed border-karak-black/10 mt-6 pt-6 space-y-2 text-sm text-karak-black/60">
+          <div className="border-t border-dashed border-crack-black/10 mt-6 pt-6 space-y-2 text-sm text-crack-black/60">
              <div className="flex justify-between"><span>Subtotal</span><span>KES {total}</span></div>
              {orderType === 'delivery' && (
                <div className="flex justify-between"><span>Delivery</span><span>KES {deliveryFee}</span></div>
              )}
-             <div className="flex justify-between items-center text-xl font-serif text-karak-black pt-4 border-t border-karak-black/5 mt-2">
+             <div className="flex justify-between items-center text-xl font-serif text-crack-black pt-4 border-t border-crack-black/5 mt-2">
                <span>Total</span>
                <span>KES {finalTotal}</span>
              </div>
@@ -434,42 +448,41 @@ export default function CheckoutPage() {
 function SuccessScreen({ name, orderNumber, paymentMethod }: { name: string, orderNumber: string, paymentMethod: PaymentMethod }) {
   const { clearCart } = useCartStore();
 
-  // Clear the cart when the success screen is SHOWN, but don't redirect
   useEffect(() => {
     clearCart();
   }, [clearCart]);
 
   return (
-    <div className="min-h-screen bg-karak-sage/10 flex items-center justify-center p-6 animate-in fade-in duration-500">
+    <div className="min-h-screen bg-crack-sage/10 flex items-center justify-center p-6 animate-in fade-in duration-500">
       <div className="max-w-md w-full bg-white rounded-3xl p-8 text-center shadow-xl">
         
         <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${
-          paymentMethod === 'mpesa' ? 'bg-green-100 text-green-600' : 'bg-karak-orange/20 text-karak-orange'
+          paymentMethod === 'mpesa' ? 'bg-green-100 text-green-600' : 'bg-crack-orange/20 text-crack-orange'
         }`}>
           <CheckCircle2 className="w-10 h-10" />
         </div>
         
-        <h1 className="font-serif text-3xl text-karak-black mb-2">
+        <h1 className="font-serif text-3xl text-crack-black mb-2">
           {paymentMethod === 'mpesa' ? "Payment Received!" : "Order Placed!"}
         </h1>
         
-        <p className="text-karak-black/60 mb-6">
+        <p className="text-crack-black/60 mb-6">
           {paymentMethod === 'mpesa' 
             ? `Thanks ${name.split(' ')[0]}, your order is being prepared.`
             : `Thanks ${name.split(' ')[0]}, please pay at the counter upon pickup.`
           }
         </p>
         
-        <div className="bg-karak-cream p-6 rounded-xl border border-karak-black/5 mb-8 relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-full h-1 bg-karak-black/10" />
-          <p className="text-xs text-karak-black/40 uppercase tracking-wider mb-2 font-bold">Order Number</p>
-          <p className="font-mono text-3xl tracking-widest text-karak-black group-hover:scale-110 transition-transform duration-300">{orderNumber}</p>
-          <p className="text-[10px] text-karak-black/30 mt-2">Take a screenshot of this screen</p>
+        <div className="bg-crack-cream p-6 rounded-xl border border-crack-black/5 mb-8 relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-full h-1 bg-crack-black/10" />
+          <p className="text-xs text-crack-black/40 uppercase tracking-wider mb-2 font-bold">Order Number</p>
+          <p className="font-mono text-3xl tracking-widest text-crack-black group-hover:scale-110 transition-transform duration-300">{orderNumber}</p>
+          <p className="text-[10px] text-crack-black/30 mt-2">Take a screenshot of this screen</p>
         </div>
 
         <Link 
           href="/menu"
-          className="block w-full bg-karak-black text-white py-4 rounded-full font-medium hover:bg-karak-orange transition-colors shadow-lg"
+          className="block w-full bg-crack-black text-white py-4 rounded-full font-medium hover:bg-crack-orange transition-colors shadow-lg"
         >
           Order Something Else
         </Link>

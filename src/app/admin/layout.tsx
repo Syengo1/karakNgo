@@ -56,7 +56,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <aside className="w-64 border-r border-white/10 flex flex-col fixed h-full bg-[#111] z-20">
         <div className="p-6 border-b border-white/10">
           <h2 className="font-serif text-xl font-bold flex items-center gap-2">
-            <span className="text-karak-orange">Karak</span> OS
+            <span className="text-crack-orange">Crack</span> OS
           </h2>
           <div className="mt-4 bg-white/5 rounded-lg p-3">
              <p className="text-sm font-bold truncate">{profile?.full_name || 'Staff'}</p>
@@ -98,7 +98,7 @@ function NavItem({ href, icon: Icon, label, active }: any) {
       href={href}
       className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
         active 
-        ? 'bg-karak-orange text-white shadow-lg shadow-karak-orange/20' 
+        ? 'bg-crack-orange text-white shadow-lg shadow-crack-orange/20' 
         : 'text-gray-400 hover:text-white hover:bg-white/5'
       }`}
     >

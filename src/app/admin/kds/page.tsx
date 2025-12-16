@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { useBranchStore } from "@/store/useBranchStore";
+// import { useBranchStore } from "@/store/useBranchStore";
+import { useAdminBranch } from "@/hooks/useAdminBranch";
 import { Clock, CheckCircle, Flame, RefreshCw, Coffee, AlertTriangle, Zap, Megaphone, Volume2, VolumeX } from "lucide-react"; // Added Volume icons
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -30,7 +31,7 @@ interface Order {
 }
 
 export default function KitchenDisplaySystem() {
-  const { currentBranch } = useBranchStore();
+  const { branchId, loading: branchLoading } = useAdminBranch();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -66,13 +67,13 @@ export default function KitchenDisplaySystem() {
 
   // --- DATA SYNC ---
   useEffect(() => {
-    if (!currentBranch) return;
+    if (!branchId) return;
 
     const fetchOrders = async () => {
       const { data } = await supabase
         .from('orders')
         .select('*')
-        .eq('branch_id', currentBranch.id)
+        .eq('branch_id', branchId)
         .neq('order_status', 'completed')
         .order('created_at', { ascending: true });
       
@@ -85,13 +86,13 @@ export default function KitchenDisplaySystem() {
     const channel = supabase
       .channel('kds-realtime')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
-        if (payload.new.branch_id === currentBranch.id) {
+        if (payload.new.branch_id === branchId) {
           setOrders(prev => [...prev, payload.new as Order]);
-          playAlert(); // <--- Trigger Sound
+          playAlert();
         }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (payload) => {
-        if (payload.new.branch_id === currentBranch.id) {
+        if (payload.new.branch_id === branchId) {
            setOrders(prev => {
              if (payload.new.order_status === 'completed') {
                return prev.filter(o => o.id !== payload.new.id);
@@ -103,7 +104,7 @@ export default function KitchenDisplaySystem() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [currentBranch, soundEnabled]); // Depend on soundEnabled so listener gets fresh state
+  }, [branchId, soundEnabled]); // Depend on soundEnabled so listener gets fresh state
 
   const updateStatus = async (id: string, nextStatus: string) => {
     setOrders(prev => prev.map(o => o.id === id ? { ...o, order_status: nextStatus as any } : o));
@@ -116,7 +117,7 @@ export default function KitchenDisplaySystem() {
 
   if (loading) return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">
-      <RefreshCw className="w-8 h-8 animate-spin text-karak-orange" />
+      <RefreshCw className="w-8 h-8 animate-spin text-crack-orange" />
     </div>
   );
 
@@ -126,12 +127,13 @@ export default function KitchenDisplaySystem() {
       {/* HEADER */}
       <header className="h-16 bg-[#1a1a1a] border-b border-white/10 flex items-center justify-between px-6 shrink-0">
         <div className="flex items-center gap-4">
-          <div className="bg-karak-orange/20 p-2 rounded-lg">
-            <Flame className="w-5 h-5 text-karak-orange" />
+          <div className="bg-crack-orange/20 p-2 rounded-lg">
+            <Flame className="w-5 h-5 text-crack-orange" />
           </div>
           <div>
              <h1 className="text-lg font-bold tracking-wide leading-none">KDS VIEW</h1>
-             <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">{currentBranch?.name}</p>
+             {/* Display the ID since we don't have the full object, or fetch name if needed */}
+             <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">{branchId} Branch</p>
           </div>
         </div>
         
@@ -283,7 +285,7 @@ function Ticket({ order, onNext, isLast, color }: TicketProps) {
              )}
 
              <div className="text-gray-400 text-xs mt-1 ml-4 space-y-0.5 border-l-2 border-white/10 pl-2">
-                {item.selectedSize !== 'Regular' && <p className="text-karak-orange">• {item.selectedSize}</p>}
+                {item.selectedSize !== 'Regular' && <p className="text-crack-orange">• {item.selectedSize}</p>}
                 {item.selectedModifiers?.map((m, i) => <p key={i}>• {m.name}</p>)}
                 {item.stickerText && <p className="text-white/60 italic">"{item.stickerText}"</p>}
              </div>

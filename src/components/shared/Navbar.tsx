@@ -8,105 +8,129 @@ import { useBranchStore } from "@/store/useBranchStore";
 import { useCartStore } from "@/store/useCartStore";
 import { usePathname } from "next/navigation";
 
+const NAV_LINKS = [
+  { name: "Menu", href: "/menu" },
+  { name: "Our Story", href: "/about" },
+];
+
 export default function Navbar() {
   const pathname = usePathname();
-  
-    if (pathname.startsWith('/admin')) return null;
+  if (pathname?.startsWith('/admin')) return null;
 
+  // Global State
+  const { currentBranch, toggleBranchSelector } = useBranchStore();
+  const { toggleCart, items } = useCartStore();
+
+  // Local State
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // 1. Global Stores
-  const { currentBranch, toggleBranchSelector } = useBranchStore();
-  const { toggleCart, items } = useCartStore();
-
-  // 2. Hydration Fix & Scroll Listener
   useEffect(() => {
     setMounted(true);
     const handleScroll = () => {
+      // Logic: Solid background triggers earlier on mobile (10px) than desktop (20px)
       setIsScrolled(window.scrollY > 20);
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Prevent hydration mismatch on the badge/branch text
-  if (!mounted) return null; 
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+  }, [isMobileMenuOpen]);
+
+  if (!mounted) return null;
 
   return (
     <>
+      {/* SMART HEADER:
+        - h-20 / h-24: Fixed heights to prevent layout shifts
+        - backdrop-blur: Keeps text readable over hero images
+      */}
       <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          isScrolled
-            ? "bg-karak-cream/80 backdrop-blur-md border-b border-karak-black/5 py-4 shadow-sm"
-            : "bg-transparent py-6"
+        className={`fixed top-0 left-0 right-0 z-[60] transition-all duration-300 ease-in-out ${
+          isScrolled || isMobileMenuOpen
+            ? "bg-crack-cream/95 backdrop-blur-xl border-b border-crack-black/5 py-3 shadow-sm"
+            : "bg-transparent py-5 md:py-6"
         }`}
       >
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
+          
           {/* Logo */}
-          <Link href="/" className="relative z-50 group">
-            <h1 className="font-serif text-2xl font-bold tracking-tight text-karak-black group-hover:opacity-80 transition-opacity">
-              Karak <span className="text-karak-orange">&</span> Go
+          <Link href="/" className="relative z-[70] group" onClick={() => setIsMobileMenuOpen(false)}>
+            <h1 className="font-serif text-2xl md:text-3xl font-bold tracking-tight text-crack-black group-hover:opacity-80 transition-opacity">
+              Crack <span className="text-crack-orange">&</span> Go
             </h1>
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-8">
-            {["Menu", "Our Story", "Merch"].map((item) => (
-              <Link
-                key={item}
-                href={`/${item.toLowerCase().replace(" ", "-")}`}
-                className="text-sm font-medium text-karak-black/80 hover:text-karak-orange transition-colors"
-              >
-                {item}
-              </Link>
-            ))}
+            {NAV_LINKS.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.name}
+                  href={link.href}
+                  className={`text-sm font-medium transition-colors relative ${
+                    isActive ? "text-crack-orange font-bold" : "text-crack-black/80 hover:text-crack-orange"
+                  }`}
+                >
+                  {link.name}
+                  {isActive && (
+                    <motion.div layoutId="activeNav" className="absolute -bottom-1 left-0 right-0 h-0.5 bg-crack-orange rounded-full" />
+                  )}
+                </Link>
+              );
+            })}
 
-            {/* Location Badge */}
             <button
               onClick={() => toggleBranchSelector(true)}
-              className="flex items-center gap-2 pl-4 border-l border-karak-black/10 text-sm font-medium text-karak-black hover:text-karak-orange transition-colors group"
-              aria-label="Change Location"
+              className={`flex items-center gap-2 pl-6 border-l text-sm font-medium transition-all group ${
+                isScrolled ? "border-crack-black/10" : "border-crack-black/5"
+              }`}
             >
-              <div className="bg-karak-orange/10 p-1.5 rounded-full group-hover:bg-karak-orange group-hover:text-white transition-colors">
+              <div className="bg-crack-orange/10 p-1.5 rounded-full group-hover:bg-crack-orange group-hover:text-white transition-colors text-crack-orange">
                 <MapPin className="w-4 h-4" />
               </div>
-              <span className="max-w-[100px] truncate">
-                {currentBranch ? currentBranch.name.split(" ")[0] : "Select Location"}
-              </span>
-              <ChevronDown className="w-3 h-3 opacity-50" />
+              <div className="flex flex-col items-start leading-none text-left">
+                <span className="text-[10px] uppercase tracking-wider opacity-50">Location</span>
+                <span className="max-w-[120px] truncate text-crack-black group-hover:text-crack-orange transition-colors">
+                  {currentBranch ? currentBranch.name.split(" ")[0] : "Select Branch"}
+                </span>
+              </div>
+              <ChevronDown className="w-3 h-3 opacity-30 group-hover:opacity-100 transition-opacity" />
             </button>
           </nav>
 
           {/* Actions */}
-          <div className="flex items-center gap-4 z-50">
-            {/* Cart Button */}
+          <div className="flex items-center gap-3 z-[70]">
             <button 
-              onClick={() => toggleCart(true)}
-              className="relative p-2 text-karak-black hover:bg-karak-black/5 rounded-full transition-colors group"
-              aria-label="Open Cart"
+              onClick={() => {
+                toggleCart(true);
+                setIsMobileMenuOpen(false);
+              }}
+              className="relative p-2.5 text-crack-black hover:bg-crack-black/5 rounded-full transition-colors group"
             >
-              <ShoppingBag className="w-5 h-5 group-hover:text-karak-orange transition-colors" />
-              
-              {/* Animated Notification Badge */}
+              <ShoppingBag className="w-5 h-5 group-hover:text-crack-orange transition-colors" />
               <AnimatePresence>
                 {items.length > 0 && (
                   <motion.span 
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                    className="absolute top-1 right-1 w-2.5 h-2.5 bg-karak-orange rounded-full ring-2 ring-karak-cream"
+                    initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+                    className="absolute top-1 right-1 w-2.5 h-2.5 bg-crack-orange rounded-full ring-2 ring-crack-cream"
                   />
                 )}
               </AnimatePresence>
             </button>
 
-            {/* Mobile Menu Toggle */}
             <button
-              className="md:hidden p-2 text-karak-black hover:bg-karak-black/5 rounded-full transition-colors"
+              className="md:hidden p-2 text-crack-black hover:bg-crack-black/5 rounded-full transition-colors"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              aria-label="Toggle Menu"
             >
               {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -118,35 +142,41 @@ export default function Navbar() {
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
+            initial={{ opacity: 0, y: "-100%" }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="fixed inset-0 z-40 bg-karak-cream pt-24 px-6 md:hidden flex flex-col"
+            exit={{ opacity: 0, y: "-100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className="fixed inset-0 z-[55] bg-crack-cream pt-32 px-6 md:hidden flex flex-col h-[100dvh]"
           >
-            <nav className="flex flex-col gap-6 text-2xl font-serif text-karak-black">
-              {["Menu", "Our Story", "Merch"].map((item) => (
+            <nav className="flex flex-col gap-8 text-3xl font-serif text-crack-black">
+              {NAV_LINKS.map((link) => (
                 <Link
-                  key={item}
-                  href="#"
+                  key={link.name}
+                  href={link.href}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="border-b border-karak-black/10 pb-4 active:text-karak-orange"
+                  className={`border-b border-crack-black/5 pb-4 transition-colors ${pathname === link.href ? "text-crack-orange pl-2" : ""}`}
                 >
-                  {item}
+                  {link.name}
                 </Link>
               ))}
               
-              {/* Mobile Location Selector */}
               <button
                 onClick={() => {
                   setIsMobileMenuOpen(false);
                   toggleBranchSelector(true);
                 }}
-                className="flex items-center gap-3 text-lg font-sans font-medium text-karak-orange pt-4"
+                className="flex items-center gap-4 text-xl font-sans font-medium text-crack-orange pt-4"
               >
-                <MapPin className="w-6 h-6" />
-                {currentBranch ? currentBranch.name : "Select Location"}
+                <div className="bg-crack-orange/20 p-3 rounded-full">
+                  <MapPin className="w-6 h-6" />
+                </div>
+                <span>{currentBranch ? currentBranch.name : "Select Location"}</span>
               </button>
             </nav>
+
+            <div className="mt-auto pb-12 text-center opacity-30">
+              <p className="font-marker text-xl">Crack & Go</p>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

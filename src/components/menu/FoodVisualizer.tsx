@@ -33,7 +33,7 @@ export default function FoodVisualizer({ stickerText }: FoodVisualizerProps) {
               animate={{ y: 0, opacity: 1 }}
               className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-40 bg-white px-4 py-3 shadow-md border border-black rotate-2 z-20"
             >
-              <div className="w-2 h-2 rounded-full bg-karak-black absolute -top-1 left-1/2 -translate-x-1/2" /> {/* Pin hole */}
+              <div className="w-2 h-2 rounded-full bg-crack-black absolute -top-1 left-1/2 -translate-x-1/2" /> {/* Pin hole */}
               <p className="font-bold text-xs uppercase tracking-tighter text-center leading-tight text-black">
                 {stickerText}
               </p>

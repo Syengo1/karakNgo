@@ -85,7 +85,7 @@ export const useCartStore = create<CartState>()(
       }
     }),
     {
-      name: 'karak-cart-storage', // Key in LocalStorage
+      name: 'crack-cart-storage', // Key in LocalStorage
       storage: createJSONStorage(() => localStorage), // Explicitly use JSON storage
     }
   )

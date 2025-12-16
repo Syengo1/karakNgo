@@ -1,32 +1,32 @@
 @import "tailwindcss";
 
 @theme {
-  /* Colors */
-  --color-karak-orange: #E07A5F;
-  --color-karak-black: #3D405B;
-  --color-karak-cream: #F4F1DE;
-  --color-karak-sage: #81B29A;
-  --color-karak-gold: #F2CC8F;
+  /* Updated Palette: Coffee & Sage */
+  --color-crack-orange: #9ede80; /* The new Pop-up/Accent Green */
+  --color-crack-black: #4b3621;  /* The new Text Color */
+  --color-crack-cream: #d7ebcc;  /* The new Background */
+  --color-crack-sage: #a3e37d;   /* Matching Green */
+  --color-crack-gold: #F2CC8F;
 
   /* Fonts */
   --font-serif: var(--font-playfair);
   --font-sans: var(--font-dm-sans);
   
   /* Glass Effect */
-  --background-image-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.1));
+  --background-image-glass: linear-gradient(135deg, rgba(231, 234, 215, 0.4), rgba(255, 255, 255, 0.1));
 }
 
 @layer base {
   html {
-    background-color: var(--color-karak-cream);
+    background-color: var(--color-crack-cream);
   }
   
   body {
-    background-color: var(--color-karak-cream);
-    color: var(--color-karak-black);
+    background-color: var(--color-crack-cream);
+    color: var(--color-crack-black);
     font-family: var(--font-dm-sans);
     
-    /* FIX: Use standard CSS for smoothing instead of the tailwind class name */
+    /* Standard Smoothing */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }

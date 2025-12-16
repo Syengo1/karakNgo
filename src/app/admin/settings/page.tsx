@@ -92,7 +92,7 @@ export default function AdminSettings() {
         {/* Printer Settings (Mock - Stays the same) */}
         <div className="bg-[#222] p-6 rounded-xl border border-white/5 space-y-4">
            <div className="flex items-center gap-2 mb-2">
-             <Printer className="w-5 h-5 text-karak-orange" />
+             <Printer className="w-5 h-5 text-crack-orange" />
              <h3 className="font-bold text-lg">KDS Receipt Printer</h3>
            </div>
            

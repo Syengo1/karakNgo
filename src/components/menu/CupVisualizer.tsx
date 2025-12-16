@@ -86,7 +86,7 @@ export default function CupVisualizer({
       <div className="absolute -top-2 left-[-5%] w-[110%] h-6 bg-white/90 rounded-full shadow-sm z-20 border border-gray-200" />
       <motion.div 
         layout // Framer Motion layout prop helps animate the straw position smoothly
-        className="absolute -top-12 left-1/2 w-3 h-48 bg-karak-black/80 -z-10 rotate-[15deg] origin-bottom" 
+        className="absolute -top-12 left-1/2 w-3 h-48 bg-crack-black/80 -z-10 rotate-[15deg] origin-bottom" 
       />
     </div>
   );

@@ -10,25 +10,31 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // The Karak Brand Colors
-        karak: {
-          orange: "#E07A5F", // Terracotta
-          black: "#3D405B",  // Soft Charcoal (Text)
-          cream: "#F4F1DE",  // Oatmeal (Background)
-          sage: "#81B29A",   // Matcha/Vegan accent
-          gold: "#F2CC8F",   // Highlights/Stars
+        // The New "Sand & Sprout" Theme
+        crack: {
+          // Mapping the Green to 'orange' ensures main buttons use it
+          orange: "#9ede80", 
+          // Your Text Color
+          black: "#4b3621",  
+          // Your Background Color
+          cream: "#d7ebcc",  
+          // Mapping Green to 'sage' for badges/accents
+          sage: "#a3e37d",   
+          // Complementary Gold (kept standard or adjusted slightly)
+          gold: "#F2CC8F",   
         },
         // Semantic aliases
-        paper: "#F4F1DE",
-        ink: "#3D405B",
+        paper: "#eae7e0",
+        ink: "#b58d69",
       },
       fontFamily: {
-        // We will configure these in the next step
         serif: ["var(--font-playfair)", "serif"],
         sans: ["var(--font-dm-sans)", "sans-serif"],
+        marker: ["var(--font-marker)", "cursive"],
       },
       backgroundImage: {
-        'glass': "linear-gradient(135deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.1))",
+        // Adjusted glass effect to match the new sand tone
+        'glass': "linear-gradient(135deg, rgba(234, 231, 224, 0.6), rgba(255, 255, 255, 0.2))",
       },
     },
   },

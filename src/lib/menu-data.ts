@@ -47,7 +47,7 @@ export const MENU_ITEMS: Product[] = [
   // --- ICED COFFEE ---
   {
     id: "ic-1",
-    name: "The Original Iced Karak",
+    name: "The Original Iced Crack",
     price: 650,
     category: "Iced Coffee",
     tags: ["Signature"]
@@ -85,7 +85,7 @@ export const MENU_ITEMS: Product[] = [
   {
     id: "f-3",
     name: "Tiraleche",
-    description: "Karak & Go's Signature Tiramisu & Tres Leche combination.",
+    description: "Crack & Go's Signature Tiramisu & Tres Leche combination.",
     price: 650,
     category: "Sweets"
   }

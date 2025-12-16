@@ -113,7 +113,7 @@ export default function AdminDashboard() {
       <div className="bg-[#222] rounded-xl border border-white/5 overflow-hidden">
         <div className="p-6 border-b border-white/5 flex justify-between items-center">
           <h3 className="font-bold text-lg text-white">Recent Activity</h3>
-          <button className="text-xs text-karak-orange hover:underline">View All</button>
+          <button className="text-xs text-crack-orange hover:underline">View All</button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">

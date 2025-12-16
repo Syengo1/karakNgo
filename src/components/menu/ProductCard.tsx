@@ -3,10 +3,11 @@
 import { Plus, Zap } from "lucide-react";
 import { motion } from "framer-motion";
 import Image from "next/image";
+import { MergedProduct } from "@/app/menu/page"; // Import shared type
 
 interface ProductCardProps {
-  product: any; // Ideally import { Product } from your types
-  onAdd: (product: any) => void;
+  product: MergedProduct;
+  onAdd: () => void;
 }
 
 export default function ProductCard({ product, onAdd }: ProductCardProps) {
@@ -21,7 +22,7 @@ export default function ProductCard({ product, onAdd }: ProductCardProps) {
   // Handler to ensure we don't trigger clicks on sold out items
   const handleClick = () => {
     if (!isSoldOut) {
-      onAdd(product);
+      onAdd();
     }
   };
 
@@ -34,14 +35,14 @@ export default function ProductCard({ product, onAdd }: ProductCardProps) {
       className={`group relative bg-white rounded-3xl p-3 md:p-4 shadow-sm border transition-all duration-300 flex flex-col h-full ${
         isSoldOut 
         ? 'border-gray-100 opacity-70 grayscale pointer-events-none cursor-not-allowed' 
-        : 'border-karak-black/5 hover:shadow-xl hover:border-karak-orange/20 cursor-pointer'
+        : 'border-crack-black/5 hover:shadow-xl hover:border-crack-orange/20 cursor-pointer'
       }`}
     >
       
       {/* --- 1. IMAGE SECTION --- */}
-      <div className="relative aspect-square w-full mb-4 flex items-center justify-center bg-karak-cream/30 rounded-2xl overflow-hidden">
+      <div className="relative aspect-square w-full mb-4 flex items-center justify-center bg-crack-cream/30 rounded-2xl overflow-hidden">
         
-        {/* Marketing Badges (Top Left) */}
+        {/* Marketing Badges */}
         <div className="absolute top-3 left-3 z-20 flex flex-col gap-1.5 items-start pointer-events-none">
            {product.is_bogo && (
              <span className="bg-[#81B29A] text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-md flex items-center gap-1 backdrop-blur-sm border border-white/10">
@@ -65,7 +66,7 @@ export default function ProductCard({ product, onAdd }: ProductCardProps) {
              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
            />
         ) : (
-           <div className="text-karak-orange/20 font-serif text-6xl select-none">K&G</div>
+           <div className="text-crack-orange/20 font-serif text-6xl select-none">K&G</div>
         )}
 
         {/* Sold Out Overlay */}
@@ -77,15 +78,14 @@ export default function ProductCard({ product, onAdd }: ProductCardProps) {
           </div>
         )}
 
-        {/* --- THE "ADD" BUTTON (The Logic Upgrade) --- */}
-        {/* Mobile: Always Visible (opacity-100). Desktop: Visible on Hover (group-hover:opacity-100) */}
+        {/* --- THE "ADD" BUTTON --- */}
         {!isSoldOut && (
           <button 
             onClick={(e) => {
-              e.stopPropagation(); // Prevent double-trigger if parent has onClick
+              e.stopPropagation(); 
               handleClick();
             }}
-            className="absolute bottom-3 right-3 z-30 w-10 h-10 bg-white text-karak-black rounded-full flex items-center justify-center shadow-lg transition-all duration-300 transform active:scale-90 md:translate-y-4 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 hover:bg-karak-orange hover:text-white"
+            className="absolute bottom-3 right-3 z-30 w-10 h-10 bg-white text-crack-black rounded-full flex items-center justify-center shadow-lg transition-all duration-300 transform active:scale-90 md:translate-y-4 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 hover:bg-crack-orange hover:text-white"
             aria-label={`Add ${product.name} to cart`}
           >
             <Plus className="w-5 h-5" />
@@ -97,7 +97,7 @@ export default function ProductCard({ product, onAdd }: ProductCardProps) {
       <div className="flex-1 flex flex-col justify-between space-y-3">
         <div>
           <div className="flex justify-between items-start gap-2">
-            <h3 className="font-serif text-lg text-karak-black leading-tight group-hover:text-karak-orange transition-colors line-clamp-2">
+            <h3 className="font-serif text-lg text-crack-black leading-tight group-hover:text-crack-orange transition-colors line-clamp-2">
               {product.name}
             </h3>
             
@@ -113,23 +113,22 @@ export default function ProductCard({ product, onAdd }: ProductCardProps) {
                   </span>
                 </>
               ) : (
-                <span className="font-sans font-medium text-karak-black text-sm">
+                <span className="font-sans font-medium text-crack-black text-sm">
                   {product.base_price}
                 </span>
               )}
             </div>
           </div>
           
-          <p className="text-xs text-karak-black/50 line-clamp-2 mt-1 min-h-[2.5em]">
+          <p className="text-xs text-crack-black/50 line-clamp-2 mt-1 min-h-[2.5em]">
             {product.description || "Freshly crafted for the soul."}
           </p>
         </div>
 
-        {/* Mobile-Only "Tap to Add" Hint (Optional Polish) */}
-        {/* On very small screens, sometimes users need a text cue */}
+        {/* Mobile-Only Hint */}
         <div className="md:hidden pt-2">
-           <span className="text-[10px] font-bold text-karak-orange uppercase tracking-wider flex items-center gap-1">
-             Tap to customize <Plus className="w-3 h-3" />
+           <span className="text-[10px] font-bold text-crack-orange uppercase tracking-wider flex items-center gap-1">
+             Tap to add <Plus className="w-3 h-3" />
            </span>
         </div>
       </div>

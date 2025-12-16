@@ -44,7 +44,7 @@ export async function POST(req: Request) {
       PartyB: shortCode,
       PhoneNumber: formattedPhone,
       CallBackURL: process.env.MPESA_CALLBACK_URL || "https://example.com/callback", // Ngrok needed for local
-      AccountReference: "KarakAndGo",
+      AccountReference: "CrackAndGo",
       TransactionDesc: `Payment for Order ${orderReference}`,
     };
 

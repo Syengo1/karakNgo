@@ -44,7 +44,7 @@ export default function OrderHistory() {
                placeholder="Search orders..." 
                value={search}
                onChange={(e) => setSearch(e.target.value)}
-               className="bg-[#222] border border-white/10 rounded-lg py-2 pl-10 text-sm focus:border-karak-orange focus:outline-none w-64"
+               className="bg-[#222] border border-white/10 rounded-lg py-2 pl-10 text-sm focus:border-crack-orange focus:outline-none w-64"
              />
            </div>
         </div>
@@ -72,7 +72,7 @@ export default function OrderHistory() {
                 <td className="px-6 py-4 font-mono">{order.id}</td>
                 <td className="px-6 py-4 font-bold">{order.customer_name}</td>
                 <td className="px-6 py-4 capitalize">{order.order_type}</td>
-                <td className="px-6 py-4 text-karak-orange font-bold">KES {order.total_amount}</td>
+                <td className="px-6 py-4 text-crack-orange font-bold">KES {order.total_amount}</td>
                 <td className="px-6 py-4">
                    <span className={`px-2 py-1 rounded text-xs font-bold uppercase border ${
                       order.order_status === 'completed' ? 'border-green-500/30 text-green-400 bg-green-500/10' :
