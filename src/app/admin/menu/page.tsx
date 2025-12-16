@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useBranchStore } from "@/store/useBranchStore";
 import { 
   Plus, Search, Image as ImageIcon, Save, Trash2, X, Loader2, UploadCloud, 
-  Tag, Percent, Zap, Eye, EyeOff, Filter, Globe, MapPin
+  Tag, Percent, Zap, Eye, EyeOff, Filter, Globe, MapPin, AlertTriangle
 } from "lucide-react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -48,7 +48,7 @@ export default function MenuManager() {
     setLoading(true);
 
     try {
-      // Fetch Global Products + Left Join with Current Branch Settings
+      // Fetch Global Products + Local Settings for THIS branch
       const { data: rawProducts, error } = await supabase
         .from('products')
         .select(`
@@ -64,7 +64,7 @@ export default function MenuManager() {
 
       if (error) throw error;
 
-      // Merge Data (Local settings override logic)
+      // Merge Data (Local overrides Global)
       const merged: Product[] = rawProducts.map((p: any) => {
         const local = p.branch_products[0] || { is_available: true, is_bogo: false, sale_price: null };
         return {
@@ -134,30 +134,30 @@ export default function MenuManager() {
   if (!currentBranch) return (
     <div className="flex items-center justify-center h-screen bg-[#111] text-white">
       <div className="text-center space-y-4">
-        <Loader2 className="w-10 h-10 animate-spin text-crack-orange mx-auto" />
+        <Loader2 className="w-10 h-10 animate-spin text-karak-orange mx-auto" />
         <p>Loading Branch Context...</p>
       </div>
     </div>
   );
 
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto text-white h-screen flex flex-col">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto text-white h-[calc(100vh-64px)] md:h-screen flex flex-col">
       
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 md:mb-8">
         <div>
-          <h1 className="text-3xl font-bold font-serif text-white">Menu Manager</h1>
-          <div className="flex items-center gap-2 mt-1 text-gray-400 text-sm">
+          <h1 className="text-2xl md:text-3xl font-bold font-serif text-white">Menu Manager</h1>
+          <div className="flex items-center gap-2 mt-1 text-gray-400 text-xs md:text-sm">
             <Globe className="w-4 h-4" />
             <span>Managing Inventory for:</span>
-            <span className="text-crack-orange font-bold bg-crack-orange/10 px-2 py-0.5 rounded border border-crack-orange/20">
+            <span className="text-karak-orange font-bold bg-karak-orange/10 px-2 py-0.5 rounded border border-karak-orange/20">
               {currentBranch.name}
             </span>
           </div>
         </div>
         <button 
           onClick={handleCreate}
-          className="bg-crack-orange hover:bg-[#c96d53] text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-crack-orange/20"
+          className="w-full md:w-auto bg-karak-orange hover:bg-[#c96d53] text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-karak-orange/20"
         >
           <Plus className="w-5 h-5" /> Add Product
         </button>
@@ -172,7 +172,7 @@ export default function MenuManager() {
             placeholder="Search products..." 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-[#222] border border-white/10 rounded-xl py-3 pl-12 text-white focus:border-crack-orange focus:outline-none transition-colors"
+            className="w-full bg-[#222] border border-white/10 rounded-xl py-3 pl-12 text-white focus:border-karak-orange focus:outline-none transition-colors"
           />
         </div>
         
@@ -183,7 +183,7 @@ export default function MenuManager() {
               onClick={() => setSelectedCategory(cat)}
               className={`whitespace-nowrap px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                 selectedCategory === cat 
-                ? 'bg-crack-cream text-crack-black shadow-md' 
+                ? 'bg-karak-cream text-karak-black shadow-md' 
                 : 'bg-[#222] text-gray-400 hover:bg-[#333]'
               }`}
             >
@@ -195,10 +195,10 @@ export default function MenuManager() {
 
       {/* GRID */}
       {loading ? (
-        <div className="flex-1 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-crack-orange" /></div>
+        <div className="flex-1 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-karak-orange" /></div>
       ) : (
-        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
+        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar pb-20">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
              {filteredProducts.map((product) => (
                <ProductCard 
                  key={product.id} 
@@ -213,7 +213,7 @@ export default function MenuManager() {
                <div className="col-span-full flex flex-col items-center justify-center py-20 text-gray-500 gap-4 opacity-50">
                  <Filter className="w-12 h-12" />
                  <p>No products found matching your filters.</p>
-                 <button onClick={() => { setSearch(""); setSelectedCategory("All"); }} className="text-crack-orange hover:underline text-sm">Clear filters</button>
+                 <button onClick={() => { setSearch(""); setSelectedCategory("All"); }} className="text-karak-orange hover:underline text-sm">Clear filters</button>
                </div>
              )}
           </div>
@@ -272,12 +272,12 @@ function ProductCard({ product, onEdit, onDelete, onToggleStatus }: { product: P
       {/* Badges */}
       <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 items-start">
          {product.is_bogo && (
-           <span className="bg-crack-sage text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1 border border-white/10 backdrop-blur-md">
+           <span className="bg-karak-sage text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1 border border-white/10 backdrop-blur-md">
              <Zap className="w-3 h-3 fill-current" /> BOGO
            </span>
          )}
          {product.sale_price && (
-           <span className="bg-crack-orange text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-lg border border-white/10 backdrop-blur-md">
+           <span className="bg-karak-orange text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-lg border border-white/10 backdrop-blur-md">
              -{discount}%
            </span>
          )}
@@ -312,7 +312,7 @@ function ProductCard({ product, onEdit, onDelete, onToggleStatus }: { product: P
            {product.sale_price ? (
              <div className="flex flex-col items-end leading-none">
                <span className="line-through opacity-50 text-[9px] mb-0.5">KES {product.base_price}</span>
-               <span className="text-crack-orange font-bold">KES {product.sale_price}</span>
+               <span className="text-karak-orange font-bold">KES {product.sale_price}</span>
              </div>
            ) : (
              <span>KES {product.base_price}</span>
@@ -324,7 +324,7 @@ function ProductCard({ product, onEdit, onDelete, onToggleStatus }: { product: P
       <div className="p-4">
          <div className="mb-3 min-h-[4rem]">
             <div className="flex flex-wrap gap-1.5 mb-2">
-               <span className="text-[9px] bg-crack-orange/10 text-crack-orange font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border border-crack-orange/20">
+               <span className="text-[9px] bg-karak-orange/10 text-karak-orange font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border border-karak-orange/20">
                  {product.category}
                </span>
                {product.tags.slice(0, 2).map(tag => (
@@ -472,7 +472,7 @@ function ProductForm({ product, branchId, onClose, onSuccess }: { product: Produ
           
           {/* Section: Local Status */}
           <div className="space-y-4">
-             <h3 className="text-xs font-bold uppercase text-crack-orange tracking-widest flex items-center gap-2">
+             <h3 className="text-xs font-bold uppercase text-karak-orange tracking-widest flex items-center gap-2">
                <MapPin className="w-3 h-3" /> {branchId} Inventory Settings
              </h3>
              
@@ -494,25 +494,25 @@ function ProductForm({ product, branchId, onClose, onSuccess }: { product: Produ
              {/* Local Deals */}
              <div className="bg-white/5 p-5 rounded-xl space-y-5 border border-white/5">
                 <div className="flex justify-between items-center border-b border-white/5 pb-4">
-                   <div className="flex items-center gap-2 text-crack-sage font-bold text-sm"><Zap className="w-4 h-4" /> BOGO Offer</div>
+                   <div className="flex items-center gap-2 text-karak-sage font-bold text-sm"><Zap className="w-4 h-4" /> BOGO Offer</div>
                    <button
                       type="button"
                       onClick={() => setFormData(prev => ({ ...prev, is_bogo: !prev.is_bogo }))}
-                      className={`w-10 h-5 rounded-full relative transition-colors ${formData.is_bogo ? 'bg-crack-sage' : 'bg-gray-700'}`}
+                      className={`w-10 h-5 rounded-full relative transition-colors ${formData.is_bogo ? 'bg-karak-sage' : 'bg-gray-700'}`}
                    >
                       <div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-all ${formData.is_bogo ? 'left-6' : 'left-1'}`} />
                    </button>
                 </div>
                 
                 <div>
-                   <label className="text-xs uppercase text-crack-orange font-bold mb-2 block">Local Sale Price Override</label>
+                   <label className="text-xs uppercase text-karak-orange font-bold mb-2 block">Local Sale Price Override</label>
                    <div className="relative">
                      <span className="absolute left-3 top-3 text-gray-500 text-sm">KES</span>
                      <input 
                        type="number" 
                        value={formData.sale_price} 
                        onChange={e => setFormData({...formData, sale_price: e.target.value})} 
-                       className="w-full bg-[#222] border border-crack-orange/30 rounded-xl p-3 pl-12 text-white focus:border-crack-orange outline-none placeholder:text-gray-600" 
+                       className="w-full bg-[#222] border border-karak-orange/30 rounded-xl p-3 pl-12 text-white focus:border-karak-orange outline-none placeholder:text-gray-600" 
                        placeholder="Leave empty for base price" 
                      />
                    </div>
@@ -531,7 +531,7 @@ function ProductForm({ product, branchId, onClose, onSuccess }: { product: Produ
              {/* Image */}
              <div 
                onClick={() => fileInputRef.current?.click()}
-               className="w-full h-48 border-2 border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-crack-orange/50 transition-all relative overflow-hidden bg-black/20 group"
+               className="w-full h-48 border-2 border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-karak-orange/50 transition-all relative overflow-hidden bg-black/20 group"
              >
                {formData.image_url ? (
                  <>
@@ -549,15 +549,15 @@ function ProductForm({ product, branchId, onClose, onSuccess }: { product: Produ
              <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
                    <label className="text-xs uppercase text-gray-500 font-bold mb-1 block">Product Name</label>
-                   <input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-[#222] border border-white/10 rounded-xl p-3 text-white focus:border-crack-orange outline-none" />
+                   <input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-[#222] border border-white/10 rounded-xl p-3 text-white focus:border-karak-orange outline-none" />
                 </div>
                 <div>
                    <label className="text-xs uppercase text-gray-500 font-bold mb-1 block">Global Base Price</label>
-                   <input type="number" required value={formData.base_price} onChange={e => setFormData({...formData, base_price: Number(e.target.value)})} className="w-full bg-[#222] border border-white/10 rounded-xl p-3 text-white focus:border-crack-orange outline-none" />
+                   <input type="number" required value={formData.base_price} onChange={e => setFormData({...formData, base_price: Number(e.target.value)})} className="w-full bg-[#222] border border-white/10 rounded-xl p-3 text-white focus:border-karak-orange outline-none" />
                 </div>
              </div>
 
-             {/* RESTORED CATEGORY GRID (Easy to Use!) */}
+             {/* CATEGORY GRID (Easy to Use!) */}
              <div>
                 <label className="text-xs uppercase text-gray-500 font-bold mb-2 block">Category</label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
@@ -580,14 +580,14 @@ function ProductForm({ product, branchId, onClose, onSuccess }: { product: Produ
 
              <div>
                 <label className="text-xs uppercase text-gray-500 font-bold mb-1 block">Description</label>
-                <textarea rows={3} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-[#222] border border-white/10 rounded-xl p-3 text-white focus:border-crack-orange outline-none resize-none" placeholder="Describe the flavors..." />
+                <textarea rows={3} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-[#222] border border-white/10 rounded-xl p-3 text-white focus:border-karak-orange outline-none resize-none" placeholder="Describe the flavors..." />
              </div>
 
              <div>
                 <label className="text-xs uppercase text-gray-500 font-bold mb-2 block">Marketing Tags</label>
                 <div className="flex flex-wrap gap-2">
                   {MARKETING_TAGS.map(tag => (
-                     <button key={tag} type="button" onClick={() => toggleTag(tag)} className={`text-xs px-3 py-1.5 rounded-full border transition-all ${formData.tags.includes(tag) ? 'bg-crack-orange text-white border-crack-orange' : 'border-white/10 text-gray-500'}`}>{tag}</button>
+                     <button key={tag} type="button" onClick={() => toggleTag(tag)} className={`text-xs px-3 py-1.5 rounded-full border transition-all ${formData.tags.includes(tag) ? 'bg-karak-orange text-white border-karak-orange' : 'border-white/10 text-gray-500'}`}>{tag}</button>
                   ))}
                 </div>
              </div>
@@ -602,7 +602,7 @@ function ProductForm({ product, branchId, onClose, onSuccess }: { product: Produ
             type="submit"
             onClick={handleSubmit} 
             disabled={isLoading}
-            className="w-full bg-crack-orange hover:bg-[#c96d53] text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-crack-orange/20"
+            className="w-full bg-karak-orange hover:bg-[#c96d53] text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-karak-orange/20"
           >
             {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5" /> Save Changes</>}
           </button>

@@ -122,26 +122,25 @@ export default function KitchenDisplaySystem() {
   );
 
   return (
-    <div className="min-h-screen bg-[#111] text-white font-sans flex flex-col h-screen overflow-hidden">
+    <div className="min-h-screen bg-[#111] text-white font-sans flex flex-col h-[calc(100vh-64px)] md:h-screen overflow-hidden">
       
       {/* HEADER */}
-      <header className="h-16 bg-[#1a1a1a] border-b border-white/10 flex items-center justify-between px-6 shrink-0">
+      <header className="h-auto md:h-16 bg-[#1a1a1a] border-b border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between p-4 md:px-6 shrink-0 gap-4 md:gap-0">
         <div className="flex items-center gap-4">
-          <div className="bg-crack-orange/20 p-2 rounded-lg">
-            <Flame className="w-5 h-5 text-crack-orange" />
+          <div className="bg-karak-orange/20 p-2 rounded-lg">
+            <Flame className="w-5 h-5 text-karak-orange" />
           </div>
           <div>
              <h1 className="text-lg font-bold tracking-wide leading-none">KDS VIEW</h1>
-             {/* Display the ID since we don't have the full object, or fetch name if needed */}
-             <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">{branchId} Branch</p>
+             <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">{branchId || 'Loading'} Branch</p>
           </div>
         </div>
         
-        <div className="flex items-center gap-6">
-           {/* Sound Toggle (Persisted) */}
+        <div className="flex items-center justify-between w-full md:w-auto gap-4 md:gap-6">
+           {/* Sound Toggle */}
            <button 
              onClick={toggleSound}
-             className={`text-xs px-3 py-1.5 rounded-full border flex items-center gap-2 transition-all ${
+             className={`flex-1 md:flex-none justify-center text-xs px-3 py-2 md:py-1.5 rounded-full border flex items-center gap-2 transition-all ${
                soundEnabled ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-white/5 text-gray-500 border-white/10'
              }`}
            >
@@ -149,7 +148,7 @@ export default function KitchenDisplaySystem() {
              {soundEnabled ? "Sound ON" : "Sound OFF"}
            </button>
 
-           <div className="h-8 w-[1px] bg-white/10" />
+           <div className="hidden md:block h-8 w-[1px] bg-white/10" />
            
            <div className="font-mono text-xl text-white">
              {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -157,9 +156,10 @@ export default function KitchenDisplaySystem() {
         </div>
       </header>
 
-      {/* BOARD */}
-      <main className="flex-1 p-4 overflow-x-auto">
-        <div className="grid grid-cols-3 gap-4 h-full min-w-[1000px]">
+      {/* BOARD: Responsive Grid */}
+      <main className="flex-1 p-4 overflow-y-auto md:overflow-x-auto">
+        {/* Mobile: Flex Column (Vertical Scroll) | Desktop: Grid 3 Cols (Horizontal if needed or Fit) */}
+        <div className="flex flex-col md:grid md:grid-cols-3 gap-4 h-auto md:h-full md:min-w-[1000px]">
           <Column title="New Orders" color="red" orders={newOrders} onNext={(id) => updateStatus(id, 'preparing')} emptyMsg="No pending orders" />
           <Column title="Preparing" color="yellow" orders={preparingOrders} onNext={(id) => updateStatus(id, 'ready')} emptyMsg="Kitchen is clear" />
           <Column title="Ready for Pickup" color="green" orders={readyOrders} onNext={(id) => updateStatus(id, 'completed')} emptyMsg="Nothing to serve" isLast />
