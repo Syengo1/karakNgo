@@ -5,12 +5,12 @@ import { supabase } from "@/lib/supabase";
 import { useBranchStore } from "@/store/useBranchStore";
 import { 
   Plus, Search, Image as ImageIcon, Save, Trash2, X, Loader2, UploadCloud, 
-  Tag, Percent, Zap, Eye, EyeOff, Filter, Globe, MapPin, AlertTriangle
+  Tag, Percent, Zap, Eye, EyeOff, Filter, Globe, MapPin, Box, AlertTriangle
 } from "lucide-react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 
-// --- TYPES ---
+// --- TYPES (Upgraded with Inventory) ---
 interface Product {
   id: string;
   name: string;
@@ -24,6 +24,10 @@ interface Product {
   sale_price: number | null; 
   is_bogo: boolean;
   is_available: boolean;
+  
+  // New Inventory Fields
+  track_stock: boolean;
+  stock_quantity: number | null;
 }
 
 const CATEGORIES = ["All", "Matcha", "Iced Coffee", "Hot Coffee", "Sandos", "Sweets", "Mojitos"];
@@ -42,7 +46,7 @@ export default function MenuManager() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
-  // --- 1. SMART DATA FETCHING ---
+  // --- 1. SMART DATA FETCHING (Now includes Stock) ---
   const fetchProducts = async () => {
     if (!currentBranch) return;
     setLoading(true);
@@ -56,7 +60,9 @@ export default function MenuManager() {
           branch_products!inner (
             is_available,
             is_bogo,
-            sale_price
+            sale_price,
+            track_stock,
+            stock_quantity
           )
         `)
         .eq('branch_products.branch_id', currentBranch.id)
@@ -66,12 +72,14 @@ export default function MenuManager() {
 
       // Merge Data (Local overrides Global)
       const merged: Product[] = rawProducts.map((p: any) => {
-        const local = p.branch_products[0] || { is_available: true, is_bogo: false, sale_price: null };
+        const local = p.branch_products[0] || {};
         return {
           ...p,
-          is_available: local.is_available,
-          is_bogo: local.is_bogo,
+          is_available: local.is_available ?? true,
+          is_bogo: local.is_bogo ?? false,
           sale_price: local.sale_price,
+          track_stock: local.track_stock ?? false,
+          stock_quantity: local.stock_quantity ?? 0,
         };
       });
       
@@ -255,27 +263,45 @@ function ProductCard({ product, onEdit, onDelete, onToggleStatus }: { product: P
     ? Math.round(((product.base_price - product.sale_price) / product.base_price) * 100)
     : 0;
 
+  // Stock Alerts
+  const isLowStock = product.track_stock && (product.stock_quantity || 0) <= 5;
+  const isOutOfStock = product.track_stock && (product.stock_quantity || 0) === 0;
+
   return (
-    <div className={`bg-[#222] rounded-xl overflow-hidden border transition-all group relative ${
-      !product.is_available ? 'border-red-500/30 opacity-75 grayscale-[0.5]' : 'border-white/5 hover:border-white/20'
+    <div className={`bg-[#222] rounded-xl overflow-hidden border transition-all group relative flex flex-col ${
+      !product.is_available || isOutOfStock ? 'border-red-500/30 opacity-75 grayscale-[0.5]' : 'border-white/5 hover:border-white/20'
     }`}>
       
       {/* Visual Status Overlay */}
-      {!product.is_available && (
+      {(!product.is_available || isOutOfStock) && (
         <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-[1px] flex items-center justify-center pointer-events-none">
           <div className="border-2 border-white/50 px-4 py-2 rounded-lg transform -rotate-12 bg-black/50 shadow-xl">
-            <p className="text-white font-bold uppercase tracking-[0.2em] text-xs">Sold Out</p>
+            <p className="text-white font-bold uppercase tracking-[0.2em] text-xs">
+              {isOutOfStock ? "Out of Stock" : "Sold Out"}
+            </p>
           </div>
         </div>
       )}
 
       {/* Badges */}
       <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 items-start">
+         {/* Inventory Badge */}
+         {product.track_stock && (
+           <span className={`text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-lg border backdrop-blur-md ${
+             isLowStock 
+             ? 'bg-red-500 text-white border-red-400 animate-pulse' 
+             : 'bg-crack-black text-white border-white/10'
+           }`}>
+             <Box className="w-3 h-3" /> {product.stock_quantity} left
+           </span>
+         )}
+
          {product.is_bogo && (
            <span className="bg-crack-sage text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1 border border-white/10 backdrop-blur-md">
              <Zap className="w-3 h-3 fill-current" /> BOGO
            </span>
          )}
+         
          {product.sale_price && (
            <span className="bg-crack-orange text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-lg border border-white/10 backdrop-blur-md">
              -{discount}%
@@ -297,7 +323,7 @@ function ProductCard({ product, onEdit, onDelete, onToggleStatus }: { product: P
       </button>
 
       {/* Image */}
-      <div className="h-48 w-full bg-[#111] relative flex items-center justify-center overflow-hidden">
+      <div className="h-40 w-full bg-[#111] relative flex items-center justify-center overflow-hidden">
         {product.image_url ? (
           <Image src={product.image_url} alt={product.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
         ) : (
@@ -321,24 +347,19 @@ function ProductCard({ product, onEdit, onDelete, onToggleStatus }: { product: P
       </div>
       
       {/* Content */}
-      <div className="p-4">
-         <div className="mb-3 min-h-[4rem]">
+      <div className="p-4 flex-1 flex flex-col">
+         <div className="mb-2">
             <div className="flex flex-wrap gap-1.5 mb-2">
                <span className="text-[9px] bg-crack-orange/10 text-crack-orange font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border border-crack-orange/20">
                  {product.category}
                </span>
-               {product.tags.slice(0, 2).map(tag => (
-                 <span key={tag} className="text-[9px] bg-white/5 text-gray-300 px-1.5 py-0.5 rounded border border-white/5">
-                   {tag}
-                 </span>
-               ))}
             </div>
-            <h3 className="font-bold text-lg leading-tight text-white">{product.name}</h3>
+            <h3 className="font-bold text-sm leading-tight text-white line-clamp-1">{product.name}</h3>
          </div>
          
-         <div className="flex gap-2 pt-4 border-t border-white/5">
-            <button onClick={onEdit} className="flex-1 bg-white/5 hover:bg-white/10 text-white py-2 rounded-lg text-sm font-medium transition-colors">
-              Edit Details
+         <div className="mt-auto flex gap-2 pt-3 border-t border-white/5">
+            <button onClick={onEdit} className="flex-1 bg-white/5 hover:bg-white/10 text-white py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors">
+              Manage
             </button>
             <button onClick={onDelete} className="px-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors" title="Delete Global Product">
               <Trash2 className="w-4 h-4" />
@@ -361,6 +382,8 @@ function ProductForm({ product, branchId, onClose, onSuccess }: { product: Produ
     sale_price: product?.sale_price || "",
     is_bogo: product?.is_bogo || false,
     is_available: product?.is_available ?? true,
+    track_stock: product?.track_stock || false,
+    stock_quantity: product?.stock_quantity || 0,
     tags: product?.tags || [] as string[],
     description: product?.description || "",
     image_url: product?.image_url || "",
@@ -393,6 +416,7 @@ function ProductForm({ product, branchId, onClose, onSuccess }: { product: Produ
     setIsLoading(true);
 
     const salePrice = formData.sale_price ? Number(formData.sale_price) : null;
+    const stockQty = formData.track_stock ? Number(formData.stock_quantity) : null;
 
     try {
       let productId = product?.id;
@@ -437,7 +461,9 @@ function ProductForm({ product, branchId, onClose, onSuccess }: { product: Produ
           .update({
             is_available: formData.is_available,
             is_bogo: formData.is_bogo,
-            sale_price: salePrice
+            sale_price: salePrice,
+            track_stock: formData.track_stock,
+            stock_quantity: stockQty
           })
           .eq('branch_id', branchId)
           .eq('product_id', productId);
@@ -489,6 +515,41 @@ function ProductForm({ product, branchId, onClose, onSuccess }: { product: Produ
                 >
                   <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${formData.is_available ? 'left-7' : 'left-1'}`} />
                 </button>
+             </div>
+
+             {/* Inventory Control Block (NEW) */}
+             <div className="bg-crack-orange/5 border border-crack-orange/20 p-4 rounded-xl space-y-4">
+                <div className="flex items-center gap-2 text-crack-orange font-bold uppercase text-xs tracking-widest">
+                  <Box className="w-4 h-4" /> Stock Control
+                </div>
+                
+                {/* Stock Tracking Toggle */}
+                <div className="flex justify-between items-center">
+                   <div>
+                      <span className="text-sm text-gray-300 block">Track Quantity?</span>
+                      <span className="text-[10px] text-gray-500">Auto-sells out when 0</span>
+                   </div>
+                   <button 
+                     type="button" 
+                     onClick={() => setFormData(p => ({...p, track_stock: !p.track_stock}))} 
+                     className={`w-10 h-5 rounded-full relative transition-colors ${formData.track_stock ? 'bg-crack-orange' : 'bg-gray-600'}`}
+                   >
+                     <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${formData.track_stock ? 'left-6' : 'left-1'}`} />
+                   </button>
+                </div>
+
+                {/* Quantity Input */}
+                {formData.track_stock && (
+                  <div className="pt-2 animate-in slide-in-from-top-2">
+                    <label className="text-xs uppercase font-bold text-gray-500 mb-1 block">Daily Quantity</label>
+                    <input 
+                      type="number" 
+                      value={formData.stock_quantity} 
+                      onChange={e => setFormData({...formData, stock_quantity: Number(e.target.value)})} 
+                      className="w-full bg-black/20 border border-white/10 rounded-lg p-3 text-white outline-none focus:border-crack-orange font-mono" 
+                    />
+                  </div>
+                )}
              </div>
 
              {/* Local Deals */}
@@ -557,7 +618,7 @@ function ProductForm({ product, branchId, onClose, onSuccess }: { product: Produ
                 </div>
              </div>
 
-             {/* CATEGORY GRID (Easy to Use!) */}
+             {/* RESTORED CATEGORY GRID (Easy to Use!) */}
              <div>
                 <label className="text-xs uppercase text-gray-500 font-bold mb-2 block">Category</label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">

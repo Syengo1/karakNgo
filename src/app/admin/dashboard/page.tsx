@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useBranchStore } from "@/store/useBranchStore";
 import { 
-  TrendingUp, Users, ShoppingBag, DollarSign, ArrowUpRight, 
-  Clock, Calendar, Star 
+  TrendingUp, ShoppingBag, DollarSign, ArrowUpRight, 
+  Star, AlertTriangle, CheckCircle2, XCircle, Package 
 } from "lucide-react";
 
 export default function AdminDashboard() {
   const { currentBranch } = useBranchStore();
+  
+  // --- STATE ---
   const [stats, setStats] = useState({
     revenue: 0,
     orders: 0,
@@ -17,27 +19,29 @@ export default function AdminDashboard() {
     topItem: "—"
   });
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [lowStockItems, setLowStockItems] = useState<any[]>([]);
+  const [branchStatus, setBranchStatus] = useState<boolean>(true); // Default open
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!currentBranch) return;
 
-    const fetchStats = async () => {
+    const fetchDashboardData = async () => {
       const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
       
-      // 1. Get Today's Orders
+      // 1. SALES STATS (Existing Logic)
       const { data: orders } = await supabase
         .from('orders')
         .select('*')
         .eq('branch_id', currentBranch.id)
-        .gte('created_at', today) // Filter for today
+        .gte('created_at', today)
         .order('created_at', { ascending: false });
 
       if (orders) {
         const totalRev = orders.reduce((acc, o) => acc + o.total_amount, 0);
         const count = orders.length;
         
-        // Calculate Top Item (Simple logic)
+        // Calculate Top Item
         const itemCounts: Record<string, number> = {};
         orders.flatMap(o => o.items).forEach((i: any) => {
           itemCounts[i.name] = (itemCounts[i.name] || 0) + i.quantity;
@@ -51,15 +55,46 @@ export default function AdminDashboard() {
           topItem: bestSeller ? bestSeller[0] : "No sales yet"
         });
 
-        setRecentOrders(orders.slice(0, 5)); // Top 5 recent
+        setRecentOrders(orders.slice(0, 5));
       }
+
+      // 2. INVENTORY HEALTH (New Logic)
+      // Fetch items that are tracking stock AND are low (< 5)
+      const { data: stockData } = await supabase
+        .from('branch_products')
+        .select(`
+          stock_quantity, 
+          products (name)
+        `)
+        .eq('branch_id', currentBranch.id)
+        .eq('track_stock', true)
+        .lte('stock_quantity', 5); // Threshold
+
+      if (stockData) {
+        // Flatten the data structure
+        const lowStock = stockData.map((item: any) => ({
+          name: item.products?.name || "Unknown Item",
+          count: item.stock_quantity
+        }));
+        setLowStockItems(lowStock);
+      }
+
+      // 3. LIVE STORE STATUS (New Logic)
+      const { data: branchData } = await supabase
+        .from('branches')
+        .select('is_open')
+        .eq('id', currentBranch.id)
+        .single();
+        
+      if (branchData) setBranchStatus(branchData.is_open);
+
       setLoading(false);
     };
 
-    fetchStats();
+    fetchDashboardData();
     
     // Auto-refresh every 30s
-    const interval = setInterval(fetchStats, 30000);
+    const interval = setInterval(fetchDashboardData, 30000);
     return () => clearInterval(interval);
   }, [currentBranch]);
 
@@ -67,25 +102,41 @@ export default function AdminDashboard() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
-      {/* Header */}
-      <div className="flex justify-between items-end">
+      
+      {/* HEADER WITH STATUS */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <h1 className="text-3xl font-bold font-serif text-white">Overview</h1>
-          <p className="text-gray-400 text-sm mt-1">Live performance for {currentBranch?.name}</p>
+          <p className="text-gray-400 text-sm mt-1">
+            Performance for <span className="text-white font-bold">{currentBranch?.name}</span>
+          </p>
         </div>
-        <div className="flex items-center gap-2 text-xs font-mono text-gray-500 bg-white/5 px-3 py-1 rounded-full">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-          LIVE UPDATES
+        
+        {/* Status Badges */}
+        <div className="flex items-center gap-3">
+           <div className={`px-4 py-2 rounded-full flex items-center gap-2 text-xs font-bold uppercase tracking-wider border ${
+             branchStatus 
+             ? 'bg-green-500/10 text-green-400 border-green-500/20' 
+             : 'bg-red-500/10 text-red-400 border-red-500/20'
+           }`}>
+             {branchStatus ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+             {branchStatus ? "Store Open" : "Store Closed"}
+           </div>
+           
+           <div className="flex items-center gap-2 text-xs font-mono text-gray-500 bg-white/5 px-3 py-2 rounded-full border border-white/5">
+             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+             LIVE
+           </div>
         </div>
       </div>
 
-      {/* Stats Grid */}
+      {/* STATS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard 
           title="Today's Revenue" 
           value={`KES ${stats.revenue.toLocaleString()}`} 
           icon={DollarSign} 
-          trend="+12% vs yesterday"
+          trend="Daily Total" // Simplified label
           color="green"
         />
         <StatCard 
@@ -109,10 +160,35 @@ export default function AdminDashboard() {
         />
       </div>
 
-      {/* Recent Activity Table */}
+      {/* LOW STOCK ALERT (Conditional) */}
+      {lowStockItems.length > 0 && (
+        <div className="bg-red-900/10 border border-red-500/20 rounded-xl p-6 animate-in fade-in slide-in-from-bottom-4">
+           <div className="flex items-center gap-2 mb-4 text-red-400">
+             <AlertTriangle className="w-5 h-5" />
+             <h3 className="font-bold">Inventory Alert: Low Stock</h3>
+           </div>
+           
+           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {lowStockItems.map((item, i) => (
+                <div key={i} className="flex justify-between items-center bg-black/20 p-3 rounded-lg border border-red-500/10">
+                   <div className="flex items-center gap-2">
+                     <Package className="w-4 h-4 text-gray-500" />
+                     <span className="text-sm text-white font-medium truncate">{item.name}</span>
+                   </div>
+                   <span className="text-xs font-bold bg-red-500 text-white px-2 py-1 rounded min-w-[3rem] text-center">
+                     {item.count} left
+                   </span>
+                </div>
+              ))}
+           </div>
+        </div>
+      )}
+
+      {/* RECENT ACTIVITY */}
       <div className="bg-[#222] rounded-xl border border-white/5 overflow-hidden">
         <div className="p-6 border-b border-white/5 flex justify-between items-center">
           <h3 className="font-bold text-lg text-white">Recent Activity</h3>
+          {/* Fixed color class name */}
           <button className="text-xs text-crack-orange hover:underline">View All</button>
         </div>
         <div className="overflow-x-auto">
