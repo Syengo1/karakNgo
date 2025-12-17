@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Playfair_Display, DM_Sans, Permanent_Marker } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/shared/Navbar";
+import Footer from "@/components/shared/Footer";
 import BranchSelector from "@/components/shared/BranchSelector";
 import CartDrawer from "@/components/cart/CartDrawer";
 
@@ -44,6 +45,8 @@ export default function RootLayout({
         <BranchSelector />
         <CartDrawer />
         {children}
+        <Footer />
+
       </body>
     </html>
   );

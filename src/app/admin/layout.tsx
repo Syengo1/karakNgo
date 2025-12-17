@@ -52,7 +52,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <>
       <div className="p-6 border-b border-white/10">
         <h2 className="font-serif text-xl font-bold flex items-center gap-2 text-white">
-          <span className="text-karak-orange">Karak</span> OS
+          <span className="text-crack-orange">Crack</span> OS
         </h2>
         <div className="mt-4 bg-white/5 rounded-lg p-3">
             <p className="text-sm font-bold truncate text-white">{profile?.full_name || 'Staff'}</p>
@@ -86,7 +86,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       
       {/* --- MOBILE HEADER (Visible only on small screens) --- */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#1a1a1a] border-b border-white/10 flex items-center justify-between px-4 z-40">
-        <span className="font-serif text-lg font-bold text-white"><span className="text-karak-orange">Karak</span> OS</span>
+        <span className="font-serif text-lg font-bold text-white"><span className="text-crack-orange">Crack</span> OS</span>
         <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-white">
           <Menu className="w-6 h-6" />
         </button>
@@ -139,7 +139,7 @@ function NavItem({ href, icon: Icon, label, active, onClick }: any) {
       onClick={onClick}
       className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
         active 
-        ? 'bg-karak-orange text-white shadow-lg shadow-karak-orange/20' 
+        ? 'bg-crack-orange text-white shadow-lg shadow-crack-orange/20' 
         : 'text-gray-400 hover:text-white hover:bg-white/5'
       }`}
     >

@@ -19,6 +19,8 @@
 @layer base {
   html {
     background-color: var(--color-crack-cream);
+    /* Smooth scrolling for the whole page */
+    scroll-behavior: smooth;
   }
   
   body {
@@ -29,5 +31,47 @@
     /* Standard Smoothing */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* --- CUSTOM SCROLLBAR --- */
+  
+  /* For Webkit Browsers (Chrome, Safari, Edge) */
+  ::-webkit-scrollbar {
+    width: 8px; /* Slim width */
+    height: 8px; /* Slim height for horizontal scrolling */
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent; /* Blends with the page */
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: rgba(75, 54, 33, 0.2); /* Crack Black with low opacity */
+    border-radius: 9999px; /* Pill shape */
+    border: 2px solid transparent; /* Creates padding effect */
+    background-clip: content-box;
+    transition: background-color 0.3s ease;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-crack-black); /* Full color on hover */
+  }
+
+  /* For Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(75, 54, 33, 0.2) transparent;
+  }
+}
+
+/* Custom Utility for hiding scrollbar but keeping functionality (if needed) */
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }

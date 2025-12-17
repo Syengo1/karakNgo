@@ -127,8 +127,8 @@ export default function KitchenDisplaySystem() {
       {/* HEADER */}
       <header className="h-auto md:h-16 bg-[#1a1a1a] border-b border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between p-4 md:px-6 shrink-0 gap-4 md:gap-0">
         <div className="flex items-center gap-4">
-          <div className="bg-karak-orange/20 p-2 rounded-lg">
-            <Flame className="w-5 h-5 text-karak-orange" />
+          <div className="bg-crack-orange/20 p-2 rounded-lg">
+            <Flame className="w-5 h-5 text-crack-orange" />
           </div>
           <div>
              <h1 className="text-lg font-bold tracking-wide leading-none">KDS VIEW</h1>

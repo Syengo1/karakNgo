@@ -57,14 +57,14 @@ export default function Home() {
       <ReviewsSection />
 
       {/* 5. FOOTER */}
-      <footer className="bg-crack-black text-crack-cream/60 py-12 text-center text-sm font-sans border-t border-white/5">
+      {/*<footer className="bg-crack-black text-crack-cream/60 py-12 text-center text-sm font-sans border-t border-white/5">
         <p className="mb-2">&copy; {new Date().getFullYear()} Crack & Go. All rights reserved.</p>
         <p className="text-xs opacity-50 flex items-center justify-center gap-2">
           <span>Designed for the Vibe</span>
           <span className="w-1 h-1 bg-crack-orange rounded-full" />
           <span>Nairobi, KE</span>
         </p>
-      </footer>
+      </footer> */}
 
     </main>
   );
